@@ -1,0 +1,11 @@
+# Config fields, showing default values
+input:
+  label: ""
+  generate:
+    mapping: root = "hello world" # No default (required)
+    interval: 1s
+    count: 0
+    batch_size: 1
+    auto_replay_nacks: true
+output:
+  type: stdout
