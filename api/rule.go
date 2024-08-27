@@ -4,51 +4,46 @@ import (
 	"connect-rule-engine/config"
 	"context"
 	"fmt"
-	"github.com/benthosdev/benthos/v4/public/service"
-	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
-	"os"
+
+	"github.com/benthosdev/benthos/v4/public/service"
+	"github.com/gin-gonic/gin"
+
+	// "os"
+	"connect-rule-engine/models"
+
+	"gorm.io/gorm"
 )
 
-func SetupRouter(cm *config.ConfigManager) *gin.Engine {
+func SetupRouter(cm *config.ConfigManager, db *gorm.DB) *gin.Engine {
 	r := gin.Default()
 
-	r.GET("/rules/:instanceID", func(c *gin.Context) {
-		instanceID := c.Param("instanceID")
-		config, err := cm.LoadConfig(instanceID)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"config": string(config)})
+	r.GET("/rules", func(c *gin.Context) {
+		var configs []models.BenthosConfig
+		db.Find(&configs)
+		c.JSON(http.StatusOK, configs)
 	})
 
-	r.POST("/rules/:instanceID", func(c *gin.Context) {
-		instanceID := c.Param("instanceID")
-		var newConfig []byte
-		// if err := c.BindJSON(&newConfig); err != nil {
-		// 	c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		// 	return
-		// }
-
-		// if err := cm.UpdateConfig(instanceID, newConfig); err != nil {
-		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		// 	return
-		// }
-		newConfig, err := os.ReadFile("/Users/yangguang/code/toys/test/connect-rule-engine/benthos.yaml")
-		if err != nil {
-			log.Fatalf("Failed to read config file: %v", err)
+	r.POST("/rules", func(c *gin.Context) {
+		var newConfig models.BenthosConfig
+		if err := c.BindJSON(&newConfig); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
+			return
 		}
-		log.Println("Configuration loaded successfully:")
-		log.Println(string(newConfig))
-		// 重新启动对应的 Benthos 实例
-		go func() {
-			if err := StartBenthosInstance(context.Background(), instanceID, newConfig); err != nil {
-				log.Fatalf("Failed to restart Benthos instance %s: %v", instanceID, err)
-			}
-		}()
+	
+		// 保存配置到数据库
+		if err := db.Create(&newConfig).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration"})
+			return
+		}
 
+		// 将新配置加载到 ConfigManager 并启动 Benthos 实例
+		cm.Configs[newConfig.ConfigName] = []byte(newConfig.Config)
+		if err := StartBenthosInstance(context.Background(), newConfig.ConfigName, []byte(newConfig.Config)); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start Benthos instance"})
+			return
+		}
 		c.Status(http.StatusOK)
 	})
 
