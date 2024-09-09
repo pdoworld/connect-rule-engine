@@ -23,7 +23,7 @@ connect-rule-engine 是一个基于 Benthos 的规则引擎系统。它提供了
 
 1. 克隆仓库到本地：
    ```
-   git clone https://github.com/your-username/connect-rule-engine.git
+   git clone https://github.com/pdoworld/connect-rule-engine.git
    ```
 
 2. 进入项目目录：

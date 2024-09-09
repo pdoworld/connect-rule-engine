@@ -25,7 +25,7 @@ This system is suitable for scenarios requiring flexible data processing rules, 
 
 1. Clone the repository:
    ```
-   git clone https://github.com/your-username/connect-rule-engine.git
+   git clone https://github.com/pdoworld/connect-rule-engine.git
    ```
 
 2. Navigate to the project directory:
