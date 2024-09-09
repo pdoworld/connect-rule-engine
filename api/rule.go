@@ -10,9 +10,7 @@ import (
 	"github.com/benthosdev/benthos/v4/public/service"
 	"github.com/gin-gonic/gin"
 
-	// "os"
 	"connect-rule-engine/models"
-
 	"gorm.io/gorm"
 )
 
@@ -25,13 +23,23 @@ func SetupRouter(cm *config.ConfigManager, db *gorm.DB) *gin.Engine {
 		c.JSON(http.StatusOK, configs)
 	})
 
+	r.GET("/rules/:config_name", func(c *gin.Context) {
+		configName := c.Param("config_name")
+		var config models.BenthosConfig
+		if err := db.Where("config_name = ?", configName).First(&config).Error; err != nil {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Configuration not found"})
+			return
+		}
+		c.JSON(http.StatusOK, config)
+	})
+
 	r.POST("/rules", func(c *gin.Context) {
 		var newConfig models.BenthosConfig
 		if err := c.BindJSON(&newConfig); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON format"})
 			return
 		}
-	
+
 		// 保存配置到数据库
 		if err := db.Create(&newConfig).Error; err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save configuration"})
@@ -44,6 +52,17 @@ func SetupRouter(cm *config.ConfigManager, db *gorm.DB) *gin.Engine {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to start Benthos instance"})
 			return
 		}
+		c.Status(http.StatusOK)
+	})
+
+	// 删除规则
+	r.DELETE("/rules/:config_name", func(c *gin.Context) {
+		configName := c.Param("config_name")
+		if err := db.Where("config_name = ?", configName).Delete(&models.BenthosConfig{}).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete configuration"})
+			return
+		}
+		delete(cm.Configs, configName)
 		c.Status(http.StatusOK)
 	})
 
