@@ -1,6 +1,6 @@
 module connect-rule-engine
 
-go 1.22.0
+go 1.22
 
 toolchain go1.22.6
 
